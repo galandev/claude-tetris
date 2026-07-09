@@ -242,3 +242,124 @@ kbd {
 #restart-btn:hover {
   filter: brightness(1.15);
 }
+
+/* ---- Leaderboard ---- */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  text-align: left;
+  padding: 2px 4px;
+  color: var(--fg);
+}
+
+.leaderboard-table th {
+  color: var(--label);
+  font-size: 9px;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--board-border);
+}
+
+.leaderboard-empty {
+  text-align: center;
+  color: var(--label);
+  font-style: italic;
+}
+
+.leaderboard-highlight {
+  background: rgba(122, 162, 247, 0.2);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.best-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--controls-fg);
+}
+
+.best-stats b {
+  color: var(--accent);
+}
+
+#reset-records-btn {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.15s;
+}
+
+#reset-records-btn:hover {
+  background: rgba(229, 115, 115, 0.15);
+}
+
+#gameover-panel {
+  width: 100%;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#gameover-panel.hidden {
+  display: none;
+}
+
+#name-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+#name-entry.hidden {
+  display: none;
+}
+
+#name-entry .label {
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+#name-input {
+  background: var(--board-bg);
+  border: 1px solid var(--board-border);
+  border-radius: 4px;
+  color: var(--fg);
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  text-align: center;
+  width: 140px;
+}
+
+#save-score-btn {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 20px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s;
+}
+
+#save-score-btn:hover {
+  filter: brightness(1.15);
+}
