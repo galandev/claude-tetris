@@ -40,8 +40,21 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
+const leaderboardBody = document.getElementById('leaderboard-body');
+const bestComboStat = document.getElementById('best-combo-stat');
+const maxLinesStat = document.getElementById('max-lines-stat');
+const resetRecordsBtn = document.getElementById('reset-records-btn');
+const gameoverLeaderboardBody = document.getElementById('gameover-leaderboard-body');
+const gameoverPanel = document.getElementById('gameover-panel');
+const nameEntry = document.getElementById('name-entry');
+const nameInput = document.getElementById('name-input');
+const saveScoreBtn = document.getElementById('save-score-btn');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+const LEADERBOARD_KEY = 'tetris-leaderboard';
+const BEST_COMBO_KEY = 'tetris-best-combo';
+const MAX_LINES_KEY = 'tetris-max-lines';
+
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, combo, maxCombo;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -109,7 +122,11 @@ function clearLines() {
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    combo++;
+    if (combo > maxCombo) maxCombo = combo;
     updateHUD();
+  } else {
+    combo = 0;
   }
 }
 
@@ -155,6 +172,88 @@ function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+}
+
+function loadLeaderboard() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LEADERBOARD_KEY));
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLeaderboard(list) {
+  localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(list));
+}
+
+function qualifiesForLeaderboard(candidateScore) {
+  const list = loadLeaderboard();
+  if (list.length < 5) return true;
+  return candidateScore > list[list.length - 1].score;
+}
+
+function insertLeaderboardEntry(entry) {
+  const list = loadLeaderboard();
+  list.push(entry);
+  list.sort((a, b) => b.score - a.score);
+  list.length = Math.min(list.length, 5);
+  saveLeaderboard(list);
+  return list;
+}
+
+function loadBestStats() {
+  const bestCombo = parseInt(localStorage.getItem(BEST_COMBO_KEY), 10) || 0;
+  const maxLinesStored = parseInt(localStorage.getItem(MAX_LINES_KEY), 10) || 0;
+  return { bestCombo, maxLinesStored };
+}
+
+function updateBestStats(finishedCombo, finishedLines) {
+  const { bestCombo, maxLinesStored } = loadBestStats();
+  if (finishedCombo > bestCombo) localStorage.setItem(BEST_COMBO_KEY, String(finishedCombo));
+  if (finishedLines > maxLinesStored) localStorage.setItem(MAX_LINES_KEY, String(finishedLines));
+}
+
+function renderLeaderboardTable(tbodyEl, list, highlightEntry) {
+  tbodyEl.innerHTML = '';
+  if (!list.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 5;
+    cell.textContent = 'Sin puntuaciones aún';
+    cell.className = 'leaderboard-empty';
+    row.appendChild(cell);
+    tbodyEl.appendChild(row);
+    return;
+  }
+  list.forEach((entry, i) => {
+    const row = document.createElement('tr');
+    if (highlightEntry && entry === highlightEntry) row.classList.add('leaderboard-highlight');
+    row.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.score.toLocaleString()}</td><td>${entry.lines}</td><td>${entry.combo}</td>`;
+    tbodyEl.appendChild(row);
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderLeaderboard(highlightEntry, precomputedList) {
+  const list = precomputedList || loadLeaderboard();
+  const { bestCombo, maxLinesStored } = loadBestStats();
+  renderLeaderboardTable(leaderboardBody, list, highlightEntry);
+  renderLeaderboardTable(gameoverLeaderboardBody, list, highlightEntry);
+  bestComboStat.textContent = bestCombo;
+  maxLinesStat.textContent = maxLinesStored;
+}
+
+function resetRecords() {
+  localStorage.removeItem(LEADERBOARD_KEY);
+  localStorage.removeItem(BEST_COMBO_KEY);
+  localStorage.removeItem(MAX_LINES_KEY);
+  renderLeaderboard();
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -225,6 +324,27 @@ function endGame() {
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+  gameoverPanel.classList.remove('hidden');
+
+  updateBestStats(maxCombo, lines);
+
+  if (qualifiesForLeaderboard(score)) {
+    nameEntry.classList.remove('hidden');
+    nameInput.value = '';
+    renderLeaderboard();
+    setTimeout(() => nameInput.focus(), 0);
+  } else {
+    nameEntry.classList.add('hidden');
+    renderLeaderboard();
+  }
+}
+
+function submitScore() {
+  const name = nameInput.value.trim() || 'AAA';
+  const entry = { name, score, lines, combo: maxCombo };
+  const list = insertLeaderboardEntry(entry);
+  nameEntry.classList.add('hidden');
+  renderLeaderboard(entry, list);
 }
 
 function togglePause() {
@@ -266,11 +386,15 @@ function init() {
   gameOver = false;
   dropInterval = 1000;
   dropAccum = 0;
+  combo = 0;
+  maxCombo = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  nameEntry.classList.add('hidden');
+  gameoverPanel.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
@@ -302,6 +426,12 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
+saveScoreBtn.addEventListener('click', submitScore);
+nameInput.addEventListener('keydown', e => {
+  if (e.code === 'Enter') submitScore();
+});
+resetRecordsBtn.addEventListener('click', resetRecords);
+
 function applyTheme(isLight) {
   document.body.classList.toggle('light-theme', isLight);
   themeToggle.checked = isLight;
@@ -313,3 +443,4 @@ themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked));
 
 init();
 applyTheme(localStorage.getItem('theme') === 'light');
+renderLeaderboard();
