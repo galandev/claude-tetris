@@ -48,3 +48,7 @@ jobs:
                - Causa probable si es un bug, o enfoque sugerido si es una mejora.
                - Este diagnóstico debe servir como base para implementar la solución
                  después, así que sé concreto y técnico, no genérico.
+               - El comentario debe estar redactado en formato Markdown válido y
+                 correctamente interpretable por GitHub (encabezados, listas,
+                 bloques de código con \`\`\` y referencias a archivos/funciones con
+                 backticks, etc.).
