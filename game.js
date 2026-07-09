@@ -28,6 +28,19 @@ const PIECES = [
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
+function lighten(hex, amount) {
+  const num = parseInt(hex.slice(1), 16);
+  const r = (num >> 16) & 0xff;
+  const g = (num >> 8) & 0xff;
+  const b = num & 0xff;
+  const nr = Math.round(r + (255 - r) * amount);
+  const ng = Math.round(g + (255 - g) * amount);
+  const nb = Math.round(b + (255 - b) * amount);
+  return `rgb(${nr}, ${ng}, ${nb})`;
+}
+
+const PASTEL_COLORS = COLORS.map(c => c ? lighten(c, 0.45) : null);
+
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
@@ -40,8 +53,10 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
+const skinSelect = document.getElementById('skin-select');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let activeSkin = 'retro';
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -159,13 +174,62 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
   context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+
+  if (activeSkin === 'neon') {
+    const color = COLORS[colorIndex];
+    context.shadowColor = color;
+    context.shadowBlur = size * 0.6;
+    context.fillStyle = color;
+    context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+    context.shadowBlur = 0;
+    context.shadowColor = 'transparent';
+    context.fillStyle = 'rgba(255,255,255,0.12)';
+    context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  } else if (activeSkin === 'pastel') {
+    const color = PASTEL_COLORS[colorIndex];
+    const px = x * size + 1;
+    const py = y * size + 1;
+    const psize = size - 2;
+    context.fillStyle = color;
+    if (context.roundRect) {
+      context.beginPath();
+      context.roundRect(px, py, psize, psize, 6);
+      context.fill();
+    } else {
+      context.fillRect(px, py, psize, psize);
+    }
+    context.fillStyle = 'rgba(255,255,255,0.25)';
+    if (context.roundRect) {
+      context.beginPath();
+      context.roundRect(px, py, psize, size * 0.15, 4);
+      context.fill();
+    } else {
+      context.fillRect(px, py, psize, 4);
+    }
+  } else if (activeSkin === 'pixel') {
+    const color = COLORS[colorIndex];
+    const px = x * size + 1;
+    const py = y * size + 1;
+    const psize = size - 2;
+    context.fillStyle = color;
+    context.fillRect(px, py, psize, psize);
+    context.fillStyle = 'rgba(255,255,255,0.12)';
+    context.fillRect(px, py, psize, 4);
+    // pixel-art dither texture: checker of darker semi-transparent squares
+    const half = psize / 2;
+    context.fillStyle = 'rgba(0,0,0,0.15)';
+    context.fillRect(px, py, half, half);
+    context.fillRect(px + half, py + half, half, half);
+  } else {
+    // retro (default)
+    const color = COLORS[colorIndex];
+    context.fillStyle = color;
+    context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+    context.fillStyle = 'rgba(255,255,255,0.12)';
+    context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  }
+
   context.globalAlpha = 1;
 }
 
@@ -311,5 +375,14 @@ function applyTheme(isLight) {
 
 themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked));
 
+function applySkin(name) {
+  activeSkin = name;
+  skinSelect.value = name;
+  localStorage.setItem('skin', name);
+}
+
+skinSelect.addEventListener('change', () => applySkin(skinSelect.value));
+
 init();
 applyTheme(localStorage.getItem('theme') === 'light');
+applySkin(localStorage.getItem('skin') || 'retro');
